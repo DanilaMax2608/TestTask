@@ -35,27 +35,29 @@ public class TransactionController {
             summary = "Принять и обработать новую расходную операцию",
             description = "Принимает транзакцию, конвертирует сумму в USD по курсу на день операции, " +
                     "определяет превышение лимита и сохраняет в БД. " +
-                    "Если лимит не установлен — используется дефолт 1000 USD."
+                    "Если лимит не установлен — используется дефолт 1000 USD.",
+
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Данные новой расходной операции",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = TransactionRequestDto.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "accountFrom": "0000000123",
+                                          "accountTo": "9999999999",
+                                          "currencyShortname": "KZT",
+                                          "sum": 350000.00,
+                                          "expenseCategory": "PRODUCT",
+                                          "datetime": "2026-01-25T12:10:00+03:00"
+                                        }
+                                        """
+                            )
+                    )
+            )
     )
-    @ApiResponse(responseCode = "201", description = "Транзакция успешно создана",
-            content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation = Transaction.class),
-                    examples = @ExampleObject(value = """
-                            {
-                              "id": 5,
-                              "accountFrom": "0000000123",
-                              "accountTo": "9999999999",
-                              "currencyShortname": "KZT",
-                              "sum": 500000.00,
-                              "expenseCategory": "PRODUCT",
-                              "datetime": "2026-01-10T08:00:00Z",
-                              "usdAmount": 986.00,
-                              "limit": null,
-                              "limitExceeded": false,
-                              "createdAt": "2026-01-23T16:45:00Z",
-                              "updatedAt": "2026-01-23T16:45:00Z"
-                            }
-                            """)))
     @ApiResponse(responseCode = "400", description = "Некорректные входные данные (валидация)")
     public ResponseEntity<Transaction> createTransaction(
             @Valid @RequestBody @Schema(description = "Данные новой транзакции") TransactionRequestDto requestDto) {

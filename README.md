@@ -143,9 +143,9 @@ mvn test
     "accountFrom": "0000000123",
     "accountTo": "9999999999",
     "currencyShortname": "KZT",
-    "sum": 500000.00,
+    "sum": 350000,
     "expenseCategory": "PRODUCT",
-    "datetime": "2026-01-25T08:00:00Z"
+    "datetime": "2026-01-25T12:10:00+03:00"
 }
 ```
 
