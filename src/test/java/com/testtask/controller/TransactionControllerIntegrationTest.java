@@ -19,6 +19,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -163,7 +165,7 @@ class TransactionControllerIntegrationTest {
                 .currencyShortname("KZT")
                 .sum(new BigDecimal("200000.00"))
                 .expenseCategory(ExpenseCategory.PRODUCT)
-                .datetime(OffsetDateTime.parse("2026-01-05T12:00:00Z"))
+                .datetime(OffsetDateTime.parse("2026-01-05T12:00:00+03:00"))
                 .build();
         restTemplate.postForEntity(getBaseUrl(), tx1, Transaction.class);
 
@@ -173,7 +175,7 @@ class TransactionControllerIntegrationTest {
                 .currencyShortname("KZT")
                 .sum(new BigDecimal("350000.00"))
                 .expenseCategory(ExpenseCategory.PRODUCT)
-                .datetime(OffsetDateTime.parse("2026-01-10T14:00:00Z"))
+                .datetime(OffsetDateTime.parse("2026-01-10T14:00:00+03:00"))
                 .build();
         restTemplate.postForEntity(getBaseUrl(), tx2, Transaction.class);
 
@@ -186,7 +188,7 @@ class TransactionControllerIntegrationTest {
                 .currencyShortname("KZT")
                 .sum(new BigDecimal("250000.00"))
                 .expenseCategory(ExpenseCategory.PRODUCT)
-                .datetime(OffsetDateTime.parse("2026-01-12T15:00:00Z"))
+                .datetime(OffsetDateTime.parse("2026-01-12T15:00:00+03:00"))
                 .build();
         restTemplate.postForEntity(getBaseUrl(), tx3, Transaction.class);
 
@@ -208,5 +210,97 @@ class TransactionControllerIntegrationTest {
 
         assertThat(exceeded[1].usdAmount()).isEqualByComparingTo("682.46");
         assertThat(exceeded[1].limitSum()).isEqualByComparingTo("1000.00");
+    }
+
+    @Test
+    void createBatchTransactions_differentCurrencies_someExceeded_sequential() {
+        OffsetDateTime limitDate = OffsetDateTime.parse("2026-01-01T00:00:00+03:00");
+        LimitRequestDto limitDto = new LimitRequestDto(
+                ExpenseCategory.PRODUCT,
+                new BigDecimal("1200.00")
+        );
+
+        ResponseEntity<LimitResponseDto> limitResp = restTemplate.postForEntity(getLimitsUrl(), limitDto, LimitResponseDto.class);
+        assertThat(limitResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long limitId = limitResp.getBody().id();
+
+        jdbcTemplate.update(
+                "UPDATE limits SET limit_datetime = ? WHERE id = ?",
+                limitDate,
+                limitId
+        );
+
+        List<TransactionRequestDto> requests = List.of(
+                TransactionRequestDto.builder()
+                        .accountFrom("333300000001")
+                        .accountTo("999900000001")
+                        .currencyShortname("KZT")
+                        .sum(new BigDecimal("100000.00"))
+                        .expenseCategory(ExpenseCategory.PRODUCT)
+                        .datetime(OffsetDateTime.parse("2026-01-15T10:00:00+03:00"))
+                        .build(),
+
+                TransactionRequestDto.builder()
+                        .accountFrom("333300000002")
+                        .accountTo("999900000002")
+                        .currencyShortname("RUB")
+                        .sum(new BigDecimal("100000.00"))
+                        .expenseCategory(ExpenseCategory.PRODUCT)
+                        .datetime(OffsetDateTime.parse("2026-01-15T10:05:00+03:00"))
+                        .build(),
+
+                TransactionRequestDto.builder()
+                        .accountFrom("333300000003")
+                        .accountTo("999900000003")
+                        .currencyShortname("KZT")
+                        .sum(new BigDecimal("100000.00"))
+                        .expenseCategory(ExpenseCategory.PRODUCT)
+                        .datetime(OffsetDateTime.parse("2026-01-15T10:10:00+03:00"))
+                        .build()
+        );
+
+        List<Transaction> savedTransactions = new ArrayList<>();
+        for (TransactionRequestDto dto : requests) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<TransactionRequestDto> entity = new HttpEntity<>(dto, headers);
+
+            ResponseEntity<Transaction> response = restTemplate.exchange(
+                    getBaseUrl(),
+                    HttpMethod.POST,
+                    entity,
+                    Transaction.class
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            Transaction saved = response.getBody();
+            assertThat(saved).isNotNull();
+            savedTransactions.add(saved);
+        }
+
+        assertThat(savedTransactions).hasSize(3);
+
+        Transaction tx1 = savedTransactions.get(0);
+        Transaction tx2 = savedTransactions.get(1);
+        Transaction tx3 = savedTransactions.get(2);
+
+        assertThat(tx1.getLimit()).isNotNull();
+        assertThat(tx2.getLimit()).isNotNull();
+        assertThat(tx3.getLimit()).isNotNull();
+        assertThat(tx1.getLimit().getId()).isEqualTo(tx2.getLimit().getId());
+
+        assertThat(tx1.isLimitExceeded()).isFalse();
+        assertThat(tx2.isLimitExceeded()).isTrue();
+        assertThat(tx3.isLimitExceeded()).isTrue();
+
+        assertThat(tx1.getUsdAmount()).isBetween(BigDecimal.valueOf(180), BigDecimal.valueOf(220));
+        assertThat(tx2.getUsdAmount()).isBetween(BigDecimal.valueOf(1000), BigDecimal.valueOf(1350));
+        assertThat(tx3.getUsdAmount()).isBetween(BigDecimal.valueOf(180), BigDecimal.valueOf(220));
+
+        ResponseEntity<ExceededTransactionResponseDto[]> exceededResp = restTemplate.getForEntity(
+                getBaseUrl() + "/exceeded",
+                ExceededTransactionResponseDto[].class
+        );
+        assertThat(exceededResp.getBody()).hasSize(2);
     }
 }

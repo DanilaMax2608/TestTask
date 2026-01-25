@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -66,6 +68,49 @@ public class TransactionController {
         Transaction saved = transactionService.processAndSave(transaction);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    @PostMapping("/batch")
+    @Operation(
+            summary = "Принять и обработать пачку расходных операций (параллельно)",
+            description = "Принимает список транзакций, обрабатывает их параллельно " +
+                    "(с использованием CompletableFuture), конвертирует в USD, проверяет лимиты и сохраняет."
+    )
+    @ApiResponse(responseCode = "201", description = "Все транзакции успешно обработаны",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = Transaction.class)))
+    @ApiResponse(responseCode = "400", description = "Некорректные данные в одной или нескольких транзакциях")
+    public ResponseEntity<List<Transaction>> createBatchTransactions(
+            @Valid @RequestBody List<TransactionRequestDto> requestDtos) {
+
+        if (requestDtos == null || requestDtos.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<CompletableFuture<Transaction>> futures = requestDtos.stream()
+                .map(dto -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        Transaction tx = appMapper.toEntity(dto);
+                        return transactionService.processAndSave(tx);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Ошибка в транзакции: " + e.getMessage(), e);
+                    }
+                }))
+                .collect(Collectors.toList());
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        List<Transaction> savedTransactions = futures.stream()
+                .map(future -> {
+                    try {
+                        return future.get();
+                    } catch (Exception e) {
+                        throw new RuntimeException("Не удалось обработать одну из транзакций", e);
+                    }
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedTransactions);
     }
 
     @GetMapping("/exceeded")

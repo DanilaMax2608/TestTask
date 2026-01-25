@@ -412,7 +412,7 @@ class TransactionServiceTest {
                 .id(1L)
                 .category(ExpenseCategory.PRODUCT)
                 .limitSum(new BigDecimal("1000.00"))
-                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00Z"))
+                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00+03:00"))
                 .currency("USD")
                 .build();
 
@@ -420,11 +420,11 @@ class TransactionServiceTest {
                 .id(2L)
                 .category(ExpenseCategory.PRODUCT)
                 .limitSum(new BigDecimal("2000.00"))
-                .limitDatetime(OffsetDateTime.parse("2026-01-11T09:00:00Z"))
+                .limitDatetime(OffsetDateTime.parse("2026-01-11T09:00:00+03:00"))
                 .currency("USD")
                 .build();
 
-        OffsetDateTime dt1 = OffsetDateTime.parse("2026-01-05T12:00:00Z");
+        OffsetDateTime dt1 = OffsetDateTime.parse("2026-01-05T12:00:00+03:00");
 
         when(limitRepository.findFirstByCategoryAndLimitDatetimeLessThanEqualOrderByLimitDatetimeDesc(
                 eq(ExpenseCategory.PRODUCT), eq(dt1)))
@@ -453,7 +453,7 @@ class TransactionServiceTest {
         assertThat(saved1.isLimitExceeded()).isFalse();
 
 
-        OffsetDateTime dt2 = OffsetDateTime.parse("2026-01-10T14:00:00Z");
+        OffsetDateTime dt2 = OffsetDateTime.parse("2026-01-10T14:00:00+03:00");
 
         when(limitRepository.findFirstByCategoryAndLimitDatetimeLessThanEqualOrderByLimitDatetimeDesc(
                 eq(ExpenseCategory.PRODUCT), eq(dt2)))
@@ -482,7 +482,7 @@ class TransactionServiceTest {
         assertThat(saved2.isLimitExceeded()).isTrue();
 
 
-        OffsetDateTime dt3 = OffsetDateTime.parse("2026-01-12T15:00:00Z");
+        OffsetDateTime dt3 = OffsetDateTime.parse("2026-01-12T15:00:00+03:00");
 
         when(limitRepository.findFirstByCategoryAndLimitDatetimeLessThanEqualOrderByLimitDatetimeDesc(
                 eq(ExpenseCategory.PRODUCT), eq(dt3)))
@@ -518,7 +518,7 @@ class TransactionServiceTest {
                 .id(1L)
                 .category(ExpenseCategory.PRODUCT)
                 .limitSum(new BigDecimal("1500.00"))
-                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00Z"))
+                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00+03:00"))
                 .currency("USD")
                 .build();
 
@@ -548,11 +548,11 @@ class TransactionServiceTest {
 
     @Test
     void transactionExactlyOnNewLimitDateShouldUseNewLimit() {
-        OffsetDateTime changeTime = OffsetDateTime.parse("2026-01-10T14:00:00Z");
+        OffsetDateTime changeTime = OffsetDateTime.parse("2026-01-10T14:00:00+03:00");
 
         Limit oldLimit = Limit.builder()
                 .limitSum(new BigDecimal("1000.00"))
-                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00Z"))
+                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00+03:00"))
                 .currency("USD")
                 .build();
 
@@ -588,8 +588,8 @@ class TransactionServiceTest {
 
     @Test
     void transactionBeforeFirstLimitSameDayShouldUseDefault1000() {
-        OffsetDateTime txTime   = OffsetDateTime.parse("2026-01-05T10:00:00Z");
-        OffsetDateTime limitTime = OffsetDateTime.parse("2026-01-05T14:30:00Z");
+        OffsetDateTime txTime   = OffsetDateTime.parse("2026-01-05T10:00:00+03:00");
+        OffsetDateTime limitTime = OffsetDateTime.parse("2026-01-05T14:30:00+03:00");
 
         when(exchangeRateService.getOrFetchRate(anyString(), any()))
                 .thenReturn(new BigDecimal("500.00"));
@@ -615,9 +615,9 @@ class TransactionServiceTest {
 
     @Test
     void multipleLimitChangesSameDayLastOneWins() {
-        OffsetDateTime t10 = OffsetDateTime.parse("2026-01-10T10:00:00Z");
-        OffsetDateTime t11 = OffsetDateTime.parse("2026-01-10T11:00:00Z");
-        OffsetDateTime t12 = OffsetDateTime.parse("2026-01-10T12:00:00Z");
+        OffsetDateTime t10 = OffsetDateTime.parse("2026-01-10T10:00:00+03:00");
+        OffsetDateTime t11 = OffsetDateTime.parse("2026-01-10T11:00:00+03:00");
+        OffsetDateTime t12 = OffsetDateTime.parse("2026-01-10T12:00:00+03:00");
 
         Limit lim10 = Limit.builder().limitSum(new BigDecimal("500.00")).limitDatetime(t10).build();
         Limit lim11 = Limit.builder().limitSum(new BigDecimal("1500.00")).limitDatetime(t11).build();
@@ -668,8 +668,8 @@ class TransactionServiceTest {
 
     @Test
     void limitSetAfterTransactionInSameMonthTransactionUsesDefaultOrPrevious() {
-        OffsetDateTime txTime   = OffsetDateTime.parse("2026-01-05T12:00:00Z");
-        OffsetDateTime limitTime = OffsetDateTime.parse("2026-01-10T09:00:00Z");
+        OffsetDateTime txTime   = OffsetDateTime.parse("2026-01-05T12:00:00+03:00");
+        OffsetDateTime limitTime = OffsetDateTime.parse("2026-01-10T09:00:00+03:00");
 
         when(exchangeRateService.getOrFetchRate(anyString(), any())).thenReturn(new BigDecimal("500.00"));
 
@@ -692,12 +692,12 @@ class TransactionServiceTest {
 
     @Test
     void spentExactlyLimitBeforeNewLimitNewTransactionUsesNewLimit() {
-        OffsetDateTime limit2Time = OffsetDateTime.parse("2026-01-10T09:00:00Z");
-        OffsetDateTime tx2Time    = OffsetDateTime.parse("2026-01-12T14:00:00Z");
+        OffsetDateTime limit2Time = OffsetDateTime.parse("2026-01-10T09:00:00+03:00");
+        OffsetDateTime tx2Time    = OffsetDateTime.parse("2026-01-12T14:00:00+03:00");
 
         Limit limit1 = Limit.builder()
                 .limitSum(new BigDecimal("1000.00"))
-                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00Z"))
+                .limitDatetime(OffsetDateTime.parse("2026-01-01T00:00:00+03:00"))
                 .category(ExpenseCategory.PRODUCT)
                 .currency("USD")
                 .build();
