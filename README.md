@@ -29,6 +29,7 @@
 - Документация API: SpringDoc OpenAPI
 - Тестирование: JUnit 5, Mockito
 - Maven
+- Docker & Docker Compose
 
 ## API Endpoints
 
@@ -47,8 +48,11 @@
 - Java 21+
 - PostgreSQL 14+
 - Maven 3.8+
+- Docker & Docker Compose
 
 ### Шаги запуска
+
+#### Локальный запуск
 
 1. Настройка базы данных
  ```
@@ -58,7 +62,7 @@
  ```
 2. Настройка переменных окружения
 
-   Создайте файл application-local.yml в src/main/resources/:
+   Создайте файл `application-local.yml` в src/main/resources/:
 ```
 spring:
   datasource:
@@ -87,6 +91,24 @@ mvn spring-boot:run
 - Приложение доступно по адресу: http://localhost:8080
 - Swagger UI: http://localhost:8080/swagger-ui.html
 - API Docs: http://localhost:8080/v3/api-docs
+
+#### Запуск с помощью Docker
+
+1. Создайте файл `.env` в корне проекта со следующим содержимым:
+```
+POSTGRES_PASSWORD=your_password
+ALPHAVANTAGE_API_KEY=your_api_key
+```
+
+2. Запустите проект командой:
+```
+docker compose up --build
+```
+
+3. Проверка работы
+
+- Приложение доступно по адресу: http://localhost:8080
+- Swagger UI: http://localhost:8080/swagger-ui.html
 
 ## Тестирование
 
