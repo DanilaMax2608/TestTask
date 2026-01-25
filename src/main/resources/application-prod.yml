@@ -1,10 +1,4 @@
 spring:
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:prod}
-
----
-
-spring:
   config:
     activate:
       on-profile: prod
