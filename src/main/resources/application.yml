@@ -20,6 +20,9 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
+alphavantage:
+  base-url: https://www.alphavantage.co
+
 logging:
   level:
     org.springframework: INFO
@@ -27,3 +30,15 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
     org.flywaydb: DEBUG
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+  packages-to-scan: com.testtask.controller
+  paths-to-match: /api/**
