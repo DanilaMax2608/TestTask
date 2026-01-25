@@ -1,0 +1,22 @@
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:prod}
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DATABASE_URL}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 5
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
